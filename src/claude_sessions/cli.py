@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 from claude_sessions.display import format_session_line
-from claude_sessions.sessions import filter_by_cwd, load_sessions
+from claude_sessions.sessions import filter_by_cwd, filter_by_entrypoint, load_sessions
 
 
 def _pick_with_fzf(lines: list[str]) -> int | None:
@@ -50,9 +50,19 @@ def main() -> None:
         action="store_true",
         help="show all sessions (default: current directory only)",
     )
+    parser.add_argument(
+        "-e",
+        "--entrypoint",
+        nargs="+",
+        default=["cli"],
+        metavar="TYPE",
+        help="filter by entrypoint type (default: cli). use 'all' to show all. supports prefix matching (e.g. 'sdk' matches sdk-cli, sdk-py)",
+    )
     args = parser.parse_args()
 
     sessions = load_sessions()
+    if "all" not in args.entrypoint:
+        sessions = filter_by_entrypoint(sessions, args.entrypoint)
     if not args.all:
         sessions = filter_by_cwd(sessions, os.getcwd())
 

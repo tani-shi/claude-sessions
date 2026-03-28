@@ -21,6 +21,7 @@ class Session:
     started_at: datetime
     name: str | None = None
     first_message: str = "(no message)"
+    entrypoint: str | None = None
 
 
 def _load_session_names() -> dict[str, str]:
@@ -64,6 +65,7 @@ def _extract_session_from_jsonl(path: Path) -> Session | None:
     cwd: str | None = None
     started_at: datetime | None = None
     first_message = "(no message)"
+    entrypoint: str | None = None
 
     try:
         with open(path) as f:
@@ -76,9 +78,11 @@ def _extract_session_from_jsonl(path: Path) -> Session | None:
                 except json.JSONDecodeError:
                     continue
 
-                # Get cwd from first entry that has it
+                # Get cwd and entrypoint from first entry that has them
                 if not cwd and entry.get("cwd"):
                     cwd = entry["cwd"]
+                if not entrypoint and entry.get("entrypoint"):
+                    entrypoint = entry["entrypoint"]
 
                 # Get timestamp from first entry
                 ts = entry.get("timestamp")
@@ -100,7 +104,7 @@ def _extract_session_from_jsonl(path: Path) -> Session | None:
                         first_message = _truncate(text, 80)
 
                 # Once we have all the info we need, stop
-                if cwd and started_at and first_message != "(no message)":
+                if cwd and started_at and entrypoint and first_message != "(no message)":
                     break
     except OSError:
         return None
@@ -113,6 +117,7 @@ def _extract_session_from_jsonl(path: Path) -> Session | None:
         cwd=cwd,
         started_at=started_at,
         first_message=first_message,
+        entrypoint=entrypoint,
     )
 
 
@@ -158,3 +163,20 @@ def load_sessions() -> list[Session]:
 
 def filter_by_cwd(sessions: list[Session], cwd: str) -> list[Session]:
     return [s for s in sessions if s.cwd == cwd]
+
+
+def _entrypoint_matches(entrypoint: str | None, value: str) -> bool:
+    """Check if an entrypoint matches a filter value using prefix matching.
+
+    'sdk' matches 'sdk-cli' and 'sdk-py', but 'cli' does not match 'sdk-cli'.
+    """
+    if entrypoint is None:
+        return False
+    return entrypoint == value or entrypoint.startswith(value + "-")
+
+
+def filter_by_entrypoint(sessions: list[Session], values: list[str]) -> list[Session]:
+    return [
+        s for s in sessions
+        if any(_entrypoint_matches(s.entrypoint, v) for v in values)
+    ]

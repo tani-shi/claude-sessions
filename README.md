@@ -7,6 +7,7 @@ Browse, search, and resume past Claude Code sessions from your terminal using [f
 ## Features
 
 - List sessions for the current directory, or all sessions with `-a`
+- Filter by entrypoint type with `-e` (default: `cli`, supports prefix matching)
 - Fuzzy search across session names, project paths, dates, and first messages
 - Instantly resume a selected session via `claude --resume`
 - Zero Python dependencies — only requires `fzf` as a system tool
@@ -37,6 +38,12 @@ claude-sessions
 
 # Show all sessions (newest first)
 claude-sessions -a
+
+# Show SDK sessions (matches sdk-cli, sdk-py, etc.)
+claude-sessions -e sdk
+
+# Show all entrypoints
+claude-sessions -e all
 
 # Help
 claude-sessions -h
