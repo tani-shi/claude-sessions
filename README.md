@@ -36,7 +36,7 @@ uv tool install .
 # Show sessions for the current directory
 claude-sessions
 
-# Show all sessions (newest first)
+# Show all sessions (most recently updated first)
 claude-sessions -a
 
 # Show SDK sessions (matches sdk-cli, sdk-py, etc.)
@@ -57,10 +57,10 @@ Each session is displayed as a single line:
 03/27 09:15 | a1b2c3d4   | other-proj | Refactor database connection...
 ```
 
-Format: `date | session name (or ID) | project directory | first message`
+Format: `last updated | session name (or ID) | project directory | first message`
 
 Select a session with fzf and it will immediately resume via `claude --resume`.
 
 ## How it works
 
-Claude Code stores conversation history as JSONL files under `~/.claude/projects/`. This tool scans those files to extract session metadata (timestamp, working directory, first user message) and correlates session names from `~/.claude/sessions/` when available. Short-lived sub-agent sessions are automatically filtered out.
+Claude Code stores conversation history as JSONL files under `~/.claude/projects/`. This tool scans those files to extract session metadata (last updated timestamp, working directory, first user message) and correlates session names from `~/.claude/sessions/` when available. Short-lived sub-agent sessions are automatically filtered out.

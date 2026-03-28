@@ -18,7 +18,7 @@ MIN_SESSION_LINES = 7
 class Session:
     session_id: str
     cwd: str
-    started_at: datetime
+    updated_at: datetime
     name: str | None = None
     first_message: str = "(no message)"
     entrypoint: str | None = None
@@ -63,7 +63,7 @@ def _extract_session_from_jsonl(path: Path) -> Session | None:
 
     session_id = path.stem
     cwd: str | None = None
-    started_at: datetime | None = None
+    updated_at: datetime | None = None
     first_message = "(no message)"
     entrypoint: str | None = None
 
@@ -84,13 +84,13 @@ def _extract_session_from_jsonl(path: Path) -> Session | None:
                 if not entrypoint and entry.get("entrypoint"):
                     entrypoint = entry["entrypoint"]
 
-                # Get timestamp from first entry
+                # Track the latest timestamp
                 ts = entry.get("timestamp")
-                if not started_at and ts:
+                if ts:
                     if isinstance(ts, str):
-                        started_at = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                        updated_at = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                     elif isinstance(ts, (int, float)):
-                        started_at = datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
+                        updated_at = datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
 
                 # Get first user message
                 if (
@@ -102,20 +102,16 @@ def _extract_session_from_jsonl(path: Path) -> Session | None:
                     text = _extract_text(content)
                     if text:
                         first_message = _truncate(text, 80)
-
-                # Once we have all the info we need, stop
-                if cwd and started_at and entrypoint and first_message != "(no message)":
-                    break
     except OSError:
         return None
 
-    if not cwd or not started_at:
+    if not cwd or not updated_at:
         return None
 
     return Session(
         session_id=session_id,
         cwd=cwd,
-        started_at=started_at,
+        updated_at=updated_at,
         first_message=first_message,
         entrypoint=entrypoint,
     )

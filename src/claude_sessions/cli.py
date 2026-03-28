@@ -66,7 +66,7 @@ def main() -> None:
     if not args.all:
         sessions = filter_by_cwd(sessions, os.getcwd())
 
-    sessions.sort(key=lambda s: s.started_at, reverse=True)
+    sessions.sort(key=lambda s: s.updated_at, reverse=True)
 
     if not sessions:
         if args.all:
