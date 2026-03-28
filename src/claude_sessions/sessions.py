@@ -125,6 +125,10 @@ def _extract_text(content: str | list) -> str:
             if isinstance(block, dict) and block.get("type") == "text":
                 raw = block.get("text", "")
                 break
+    # Extract only <command-args> content if present (skill invocations)
+    m = re.search(r"<command-args>(.*?)</command-args>", raw, re.DOTALL)
+    if m:
+        raw = m.group(1)
     text = raw.replace("\n", " ").strip()
     return re.sub(r"<[^>]+>", "", text).strip()
 
