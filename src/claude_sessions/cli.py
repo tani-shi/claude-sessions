@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
 import sys
 
 from claude_sessions.display import format_session_line
-from claude_sessions.sessions import filter_by_cwd, filter_by_entrypoint, load_sessions
+from claude_sessions.sessions import Session, filter_by_cwd, filter_by_entrypoint, load_sessions
 
 
 def _pick_with_fzf(lines: list[str]) -> int | None:
@@ -22,7 +23,7 @@ def _pick_with_fzf(lines: list[str]) -> int | None:
             fzf,
             "--ansi",
             "--no-sort",
-            "--header", "Select a session to resume (type to search):",
+            "--header", "Select a session (type to search):",
             "--with-nth", "2..",
             "--delimiter", "\t",
             "--tabstop", "1",
@@ -82,11 +83,108 @@ def main() -> None:
         sys.exit(0)
 
     selected = sessions[index]
+    if selected.is_resumable:
+        try:
+            os.execvp("claude", ["claude", "--resume", selected.session_id])
+        except FileNotFoundError:
+            print(
+                "Error: 'claude' command not found. Is Claude Code installed and on your PATH?",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    else:
+        _show_session_log(selected)
+
+
+def _extract_message_text(content: str | list) -> str:
+    """Extract displayable text from message content."""
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                parts.append(block.get("text", ""))
+        return "\n".join(parts).strip()
+    return ""
+
+
+def _parse_conversation(path: str) -> list[dict]:
+    """Extract user and assistant messages from a JSONL session file."""
+    messages: list[dict] = []
     try:
-        os.execvp("claude", ["claude", "--resume", selected.session_id])
-    except FileNotFoundError:
-        print(
-            "Error: 'claude' command not found. Is Claude Code installed and on your PATH?",
-            file=sys.stderr,
-        )
+        f = open(path)
+    except OSError:
+        return messages
+    with f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            if entry.get("type") not in ("user", "assistant"):
+                continue
+
+            message = entry.get("message", {})
+            role = message.get("role", "")
+            content = message.get("content", "")
+
+            text = _extract_message_text(content)
+            if not text:
+                continue
+
+            # Deduplicate consecutive messages with same role and text
+            if messages and messages[-1]["role"] == role and messages[-1]["text"] == text:
+                continue
+
+            messages.append({"role": role, "text": text})
+    return messages
+
+
+def _format_conversation(entries: list[dict], session: Session) -> str:
+    """Format conversation entries for terminal display."""
+    lines = []
+    name = session.name or session.session_id[:8]
+    ts = session.updated_at.astimezone().strftime("%Y-%m-%d %H:%M")
+    ep = session.entrypoint or "unknown"
+
+    lines.append(f"Session: {name} ({ep})")
+    lines.append(f"Date: {ts}")
+    lines.append("=" * 60)
+    lines.append("")
+
+    for entry in entries:
+        label = "USER" if entry["role"] == "user" else "ASSISTANT"
+        lines.append(f"--- {label} ---")
+        lines.append(entry["text"])
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def _page_output(text: str) -> None:
+    """Display text through a pager or directly to stdout."""
+    pager = shutil.which("less")
+    if pager and sys.stdout.isatty():
+        subprocess.run([pager, "-R"], input=text, text=True)
+    else:
+        print(text)
+
+
+def _show_session_log(session: Session) -> None:
+    """Display a read-only conversation log for non-resumable sessions."""
+    if session.jsonl_path is None or not os.path.exists(session.jsonl_path):
+        print("Error: session log file not found.", file=sys.stderr)
         sys.exit(1)
+
+    entries = _parse_conversation(session.jsonl_path)
+    if not entries:
+        print("No conversation messages found in this session.")
+        sys.exit(0)
+
+    output = _format_conversation(entries, session)
+    _page_output(output)

@@ -17,11 +17,17 @@ MIN_SESSION_LINES = 7
 @dataclass
 class Session:
     session_id: str
-    cwd: str
+    cwd: str | None
     updated_at: datetime
     name: str | None = None
     first_message: str = "(no message)"
     entrypoint: str | None = None
+    jsonl_path: str | None = None
+
+    @property
+    def is_resumable(self) -> bool:
+        """CLI sessions can be resumed; SDK sessions are view-only."""
+        return self.entrypoint is None or self.entrypoint == "cli"
 
 
 def _load_session_names() -> dict[str, str]:
@@ -105,7 +111,7 @@ def _extract_session_from_jsonl(path: Path) -> Session | None:
     except OSError:
         return None
 
-    if not cwd or not updated_at:
+    if not updated_at:
         return None
 
     return Session(
@@ -114,6 +120,7 @@ def _extract_session_from_jsonl(path: Path) -> Session | None:
         updated_at=updated_at,
         first_message=first_message,
         entrypoint=entrypoint,
+        jsonl_path=str(path),
     )
 
 
@@ -167,7 +174,7 @@ def _entrypoint_matches(entrypoint: str | None, value: str) -> bool:
     'sdk' matches 'sdk-cli' and 'sdk-py', but 'cli' does not match 'sdk-cli'.
     """
     if entrypoint is None:
-        return False
+        return value == "cli"  # pre-entrypoint sessions are treated as cli
     return entrypoint == value or entrypoint.startswith(value + "-")
 
 

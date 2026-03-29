@@ -15,7 +15,12 @@ def abbreviate_path(cwd: str) -> str:
 
 def format_session_line(session: Session) -> str:
     name = session.name or session.session_id[:8]
-    short_path = Path(abbreviate_path(session.cwd)).name
+    if session.entrypoint and session.entrypoint != "cli":
+        short_path = session.entrypoint
+    elif session.cwd:
+        short_path = Path(abbreviate_path(session.cwd)).name
+    else:
+        short_path = "(no path)"
     ts = session.updated_at.astimezone().strftime("%m/%d %H:%M")
     msg = session.first_message
     if len(msg) > 80:

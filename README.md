@@ -9,7 +9,8 @@ Browse, search, and resume past Claude Code sessions from your terminal using [f
 - List sessions for the current directory, or all sessions with `-a`
 - Filter by entrypoint type with `-e` (default: `cli`, supports prefix matching)
 - Fuzzy search across session names, project paths, dates, and first messages
-- Instantly resume a selected session via `claude --resume`
+- Instantly resume a selected CLI session via `claude --resume`
+- View read-only conversation logs for SDK sessions
 - Zero Python dependencies — only requires `fzf` as a system tool
 
 ## Requirements
@@ -54,12 +55,13 @@ Each session is displayed as a single line:
 ```
 03/28 15:06 | my-feature | my-project | Add authentication to the API...
 03/28 14:30 | bugfix-auth | my-project | Fix login redirect loop when...
+03/28 10:00 | e4c72c37   | sdk-cli    | You are an objective financial...
 03/27 09:15 | a1b2c3d4   | other-proj | Refactor database connection...
 ```
 
 Format: `last updated | session name (or ID) | project directory | first message`
 
-Select a session with fzf and it will immediately resume via `claude --resume`.
+Select a CLI session with fzf and it will immediately resume via `claude --resume`. SDK sessions are opened in a read-only log viewer instead.
 
 ## How it works
 
