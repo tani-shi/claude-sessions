@@ -83,6 +83,8 @@ def main() -> None:
         sys.exit(0)
 
     selected = sessions[index]
+    if selected.cwd and selected.cwd != os.getcwd():
+        os.chdir(selected.cwd)
     if selected.is_resumable:
         try:
             os.execvp("claude", ["claude", "--resume", selected.session_id])
